@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, PLATFORM_ID, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, tap, catchError, throwError } from 'rxjs';
 import { Router } from '@angular/router';
@@ -12,21 +13,27 @@ export class AuthService {
   private readonly TOKEN_KEY = 'code_arena_token';
   private readonly USER_KEY = 'code_arena_user';
 
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  private readonly currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
   
   // Signals for reactive UI
   public isAuthenticated = signal(false);
   public currentUser = signal<User | null>(null);
 
+  private readonly platformId = inject(PLATFORM_ID);
+
   constructor(
-    private http: HttpClient,
-    private router: Router
+    private readonly http: HttpClient,
+    private readonly router: Router
   ) {
     this.initializeAuth();
   }
 
   private initializeAuth(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return; // Skip initialization during SSR
+    }
+    
     const token = this.getToken();
     const user = this.getStoredUser();
     
@@ -60,8 +67,10 @@ export class AuthService {
   }
 
   logout(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.USER_KEY);
+    if (isPlatformBrowser(this.platformId)) {
+      localStorage.removeItem(this.TOKEN_KEY);
+      localStorage.removeItem(this.USER_KEY);
+    }
     this.currentUserSubject.next(null);
     this.currentUser.set(null);
     this.isAuthenticated.set(false);
@@ -69,17 +78,25 @@ export class AuthService {
   }
 
   getToken(): string | null {
+    if (!isPlatformBrowser(this.platformId)) {
+      return null; // Return null during SSR
+    }
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
   private getStoredUser(): User | null {
+    if (!isPlatformBrowser(this.platformId)) {
+      return null; // Return null during SSR
+    }
     const userStr = localStorage.getItem(this.USER_KEY);
     return userStr ? JSON.parse(userStr) : null;
   }
 
   private handleAuthSuccess(response: AuthResponse): void {
-    localStorage.setItem(this.TOKEN_KEY, response.token);
-    localStorage.setItem(this.USER_KEY, JSON.stringify(response.user));
+    if (isPlatformBrowser(this.platformId)) {
+      localStorage.setItem(this.TOKEN_KEY, response.token);
+      localStorage.setItem(this.USER_KEY, JSON.stringify(response.user));
+    }
     this.currentUserSubject.next(response.user);
     this.currentUser.set(response.user);
     this.isAuthenticated.set(true);
@@ -89,7 +106,9 @@ export class AuthService {
     return this.http.get<User>(`${this.API_URL}/users/me`)
       .pipe(
         tap(user => {
-          localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+          if (isPlatformBrowser(this.platformId)) {
+            localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+          }
           this.currentUserSubject.next(user);
           this.currentUser.set(user);
         })
@@ -100,7 +119,9 @@ export class AuthService {
     return this.http.put<User>(`${this.API_URL}/users/me`, profileData)
       .pipe(
         tap(user => {
-          localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+          if (isPlatformBrowser(this.platformId)) {
+            localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+          }
           this.currentUserSubject.next(user);
           this.currentUser.set(user);
         })

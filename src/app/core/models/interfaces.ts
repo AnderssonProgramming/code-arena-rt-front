@@ -242,6 +242,7 @@ export interface GameSettings {
   roundCount: number;
   timeLimit: number;
   scoringMode: ScoringMode;
+  difficulty?: string;
   allowHints: boolean;
   showResults: boolean;
 }

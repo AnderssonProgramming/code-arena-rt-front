@@ -105,8 +105,10 @@ import { LoginRequest } from '../../../core/models/interfaces';
                   <mat-spinner diameter="20"></mat-spinner>
                   <span>Iniciando sesión...</span>
                 } @else {
-                  <span>Iniciar Sesión</span>
-                  <mat-icon>login</mat-icon>
+                  <ng-container>
+                    <mat-icon>login</mat-icon>
+                    <span>Iniciar Sesión</span>
+                  </ng-container>
                 }
               </button>
             </form>
@@ -146,11 +148,11 @@ export class LoginComponent {
   errorMessage = signal('');
 
   constructor(
-    private fb: FormBuilder,
-    private authService: AuthService,
-    private webSocketService: WebSocketService,
-    private router: Router,
-    private snackBar: MatSnackBar
+    private readonly fb: FormBuilder,
+    private readonly authService: AuthService,
+    private readonly webSocketService: WebSocketService,
+    private readonly router: Router,
+    private readonly snackBar: MatSnackBar
   ) {
     this.loginForm = this.fb.group({
       usernameOrEmail: ['', [Validators.required]],

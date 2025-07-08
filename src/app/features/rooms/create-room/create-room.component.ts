@@ -248,8 +248,10 @@ import { CreateRoomRequest } from '../../../core/services/room.service';
                     <mat-spinner diameter="20"></mat-spinner>
                     <span>Creating...</span>
                   } @else {
-                    <mat-icon>add</mat-icon>
-                    <span>Create Room</span>
+                    <ng-container>
+                      <mat-icon>add</mat-icon>
+                      <span>Create Room</span>
+                    </ng-container>
                   }
                 </button>
               </div>

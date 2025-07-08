@@ -168,8 +168,8 @@ import { RegisterRequest } from '../../../core/models/interfaces';
                   <span>Creando cuenta...</span>
                 } @else {
                   <ng-container>
-                    <span>Crear Cuenta</span>
                     <mat-icon>person_add</mat-icon>
+                    <span>Crear Cuenta</span>
                   </ng-container>
                 }
               </button>
