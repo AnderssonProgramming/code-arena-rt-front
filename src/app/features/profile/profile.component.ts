@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,17 +9,20 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDialogModule } from '@angular/material/dialog';
-import { AuthService } from '../../../core/services/auth.service';
-import { GameHistoryService } from '../../../core/services/game-history.service';
-import { User, GameSession } from '../../../core/models/interfaces';
+import { AuthService } from '../../core/services/auth.service';
+import { GameHistoryService } from '../../core/services/game-history.service';
+import { User, GameSession } from '../../core/models/interfaces';
 
 @Component({
   selector: 'app-profile',
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    FormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -28,6 +31,8 @@ import { User, GameSession } from '../../../core/models/interfaces';
     MatTabsModule,
     MatChipsModule,
     MatProgressBarModule,
+    MatProgressSpinnerModule,
+    MatSlideToggleModule,
     MatSnackBarModule,
     MatDialogModule
   ],
@@ -38,8 +43,8 @@ import { User, GameSession } from '../../../core/models/interfaces';
           <div class="banner-content">
             <div class="user-avatar">
               <div class="avatar-circle">
-                @if (currentUser()?.profile.avatar) {
-                  <img [src]="currentUser()?.profile.avatar" [alt]="currentUser()?.username">
+                @if (getUserAvatar()) {
+                  <img [src]="getUserAvatar()" [alt]="currentUser()?.username">
                 } @else {
                   <mat-icon>person</mat-icon>
                 }
@@ -50,15 +55,15 @@ import { User, GameSession } from '../../../core/models/interfaces';
             </div>
             
             <div class="user-info">
-              <h1>{{currentUser()?.profile.displayName || currentUser()?.username}}</h1>
+              <h1>{{getUserDisplayName()}}</h1>
               <p class="username">{{currentUser()?.username}}</p>
               <div class="user-meta">
                 <div class="level-info">
                   <mat-chip class="level-chip">
                     <mat-icon>star</mat-icon>
-                    Level {{currentUser()?.profile.level || 1}}
+                    Level {{getUserLevel()}}
                   </mat-chip>
-                  <span class="exp-text">{{currentUser()?.profile.experience || 0}} XP</span>
+                  <span class="exp-text">{{getUserExperience()}} XP</span>
                 </div>
                 <div class="join-date">
                   <mat-icon>calendar_today</mat-icon>
@@ -81,7 +86,7 @@ import { User, GameSession } from '../../../core/models/interfaces';
                     <div class="stat-item">
                       <mat-icon class="stat-icon games">sports_esports</mat-icon>
                       <div class="stat-details">
-                        <h3>{{currentUser()?.stats.gamesPlayed || 0}}</h3>
+                        <h3>{{getUserStats().gamesPlayed}}</h3>
                         <p>Games Played</p>
                       </div>
                     </div>
@@ -93,7 +98,7 @@ import { User, GameSession } from '../../../core/models/interfaces';
                     <div class="stat-item">
                       <mat-icon class="stat-icon wins">emoji_events</mat-icon>
                       <div class="stat-details">
-                        <h3>{{currentUser()?.stats.gamesWon || 0}}</h3>
+                        <h3>{{getUserStats().gamesWon}}</h3>
                         <p>Victories</p>
                       </div>
                     </div>
@@ -117,7 +122,7 @@ import { User, GameSession } from '../../../core/models/interfaces';
                     <div class="stat-item">
                       <mat-icon class="stat-icon score">score</mat-icon>
                       <div class="stat-details">
-                        <h3>{{Math.round(currentUser()?.stats.averageScore || 0)}}</h3>
+                        <h3>{{Math.round(getUserStats().averageScore)}}</h3>
                         <p>Avg Score</p>
                       </div>
                     </div>
@@ -129,7 +134,7 @@ import { User, GameSession } from '../../../core/models/interfaces';
                     <div class="stat-item">
                       <mat-icon class="stat-icon streak">local_fire_department</mat-icon>
                       <div class="stat-details">
-                        <h3>{{currentUser()?.stats.bestStreak || 0}}</h3>
+                        <h3>{{getUserStats().bestStreak}}</h3>
                         <p>Best Streak</p>
                       </div>
                     </div>
@@ -141,7 +146,7 @@ import { User, GameSession } from '../../../core/models/interfaces';
                     <div class="stat-item">
                       <mat-icon class="stat-icon time">schedule</mat-icon>
                       <div class="stat-details">
-                        <h3>{{formatPlayTime(currentUser()?.stats.totalPlayTime || 0)}}</h3>
+                        <h3>{{formatPlayTime(getUserStats().totalPlayTime)}}</h3>
                         <p>Play Time</p>
                       </div>
                     </div>
@@ -153,11 +158,11 @@ import { User, GameSession } from '../../../core/models/interfaces';
               <mat-card class="progress-card">
                 <mat-card-header>
                   <mat-card-title>Experience Progress</mat-card-title>
-                  <mat-card-subtitle>Level {{currentUser()?.profile.level}} → Level {{(currentUser()?.profile.level || 1) + 1}}</mat-card-subtitle>
+                  <mat-card-subtitle>Level {{getUserLevel()}} → Level {{getUserLevel() + 1}}</mat-card-subtitle>
                 </mat-card-header>
                 <mat-card-content>
                   <div class="progress-info">
-                    <span>{{currentUser()?.profile.experience || 0}} / {{getNextLevelExp()}} XP</span>
+                    <span>{{getUserExperience()}} / {{getNextLevelExp()}} XP</span>
                     <span>{{getExpToNextLevel()}} XP to next level</span>
                   </div>
                   <mat-progress-bar 
@@ -200,7 +205,7 @@ import { User, GameSession } from '../../../core/models/interfaces';
                             </mat-icon>
                             <div class="game-details">
                               <h4>{{getGameDisplayName(game.gameType)}}</h4>
-                              <p class="game-time">{{formatGameTime(game.endedAt)}}</p>
+                              <p class="game-time">{{safeFormatGameTime(game.endedAt)}}</p>
                             </div>
                           </div>
                           
@@ -263,8 +268,10 @@ import { User, GameSession } from '../../../core/models/interfaces';
                           <mat-progress-spinner diameter="20"></mat-progress-spinner>
                           <span>Saving...</span>
                         } @else {
-                          <mat-icon>save</mat-icon>
-                          <span>Save Changes</span>
+                          <ng-container>
+                            <mat-icon>save</mat-icon>
+                            <span>Save Changes</span>
+                          </ng-container>
                         }
                       </button>
                     </div>
@@ -284,7 +291,7 @@ import { User, GameSession } from '../../../core/models/interfaces';
                         <h4>Sound Effects</h4>
                         <p>Enable sound effects during games</p>
                       </div>
-                      <mat-slide-toggle [(ngModel)]="soundEnabled" (change)="updatePreference('sound', $event.checked)">
+                      <mat-slide-toggle [(ngModel)]="soundEnabled" (ngModelChange)="onSoundEnabledChange($event)">
                       </mat-slide-toggle>
                     </div>
                     
@@ -293,7 +300,7 @@ import { User, GameSession } from '../../../core/models/interfaces';
                         <h4>Notifications</h4>
                         <p>Receive notifications for game invites and updates</p>
                       </div>
-                      <mat-slide-toggle [(ngModel)]="notificationsEnabled" (change)="updatePreference('notifications', $event.checked)">
+                      <mat-slide-toggle [(ngModel)]="notificationsEnabled" (ngModelChange)="onNotificationsEnabledChange($event)">
                       </mat-slide-toggle>
                     </div>
                   </div>
@@ -680,10 +687,10 @@ import { User, GameSession } from '../../../core/models/interfaces';
   `]
 })
 export class ProfileComponent implements OnInit {
-  private authService = inject(AuthService);
-  private gameHistoryService = inject(GameHistoryService);
-  private fb = inject(FormBuilder);
-  private snackBar = inject(MatSnackBar);
+  private readonly authService = inject(AuthService);
+  private readonly gameHistoryService = inject(GameHistoryService);
+  private readonly fb = inject(FormBuilder);
+  private readonly snackBar = inject(MatSnackBar);
 
   // Reactive signals
   currentUser = this.authService.currentUser;
@@ -693,13 +700,13 @@ export class ProfileComponent implements OnInit {
 
   // Form
   profileForm: FormGroup = this.fb.group({
-    displayName: [this.currentUser()?.profile.displayName || '', [Validators.required]],
-    email: [this.currentUser()?.email || '', [Validators.required, Validators.email]]
+    displayName: [this.currentUser()?.profile.displayName ?? '', [Validators.required]],
+    email: [this.currentUser()?.email ?? '', [Validators.required, Validators.email]]
   });
 
   // Preferences
-  soundEnabled = this.currentUser()?.settings.soundEnabled || true;
-  notificationsEnabled = this.currentUser()?.settings.notifications || true;
+  soundEnabled: boolean = this.currentUser()?.settings.soundEnabled ?? true;
+  notificationsEnabled: boolean = this.currentUser()?.settings.notifications ?? true;
 
   // Math reference for template
   Math = Math;
@@ -783,8 +790,18 @@ export class ProfileComponent implements OnInit {
   }
 
   editAvatar(): void {
-    // TODO: Implement avatar upload
+    // Avatar upload functionality will be implemented in future releases
     this.snackBar.open('Avatar upload coming soon!', 'Close', { duration: 3000 });
+  }
+
+  onSoundEnabledChange(value: boolean): void {
+    this.soundEnabled = value;
+    this.updatePreference('sound', value);
+  }
+
+  onNotificationsEnabledChange(value: boolean): void {
+    this.notificationsEnabled = value;
+    this.updatePreference('notifications', value);
   }
 
   getWinRate(): number {
@@ -794,7 +811,7 @@ export class ProfileComponent implements OnInit {
   }
 
   getNextLevelExp(): number {
-    const level = this.currentUser()?.profile.level || 1;
+    const level = this.currentUser()?.profile.level ?? 1;
     return level * 1000; // Simple progression: 1000 XP per level
   }
 
@@ -841,6 +858,10 @@ export class ProfileComponent implements OnInit {
     });
   }
 
+  safeFormatGameTime(date: Date | undefined): string {
+    return this.formatGameTime(date || new Date());
+  }
+
   formatDuration(seconds: number): string {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -867,5 +888,33 @@ export class ProfileComponent implements OnInit {
       'MATH_PUZZLE': 'Math Puzzle'
     };
     return names[gameType] || gameType;
+  }
+
+  // Helper methods for safe access to user properties  
+  getUserDisplayName(): string {
+    const user = this.currentUser();
+    return user?.profile?.displayName ?? user?.username ?? 'Unknown User';
+  }
+
+  getUserAvatar(): string | null {
+    return this.currentUser()?.profile?.avatar ?? null;
+  }
+
+  getUserLevel(): number {
+    return this.currentUser()?.profile?.level ?? 1;
+  }
+
+  getUserExperience(): number {
+    return this.currentUser()?.profile?.experience ?? 0;
+  }
+
+  getUserStats() {
+    return {
+      gamesPlayed: this.currentUser()?.stats?.gamesPlayed ?? 0,
+      gamesWon: this.currentUser()?.stats?.gamesWon ?? 0,
+      averageScore: this.currentUser()?.stats?.averageScore ?? 0,
+      bestStreak: this.currentUser()?.stats?.bestStreak ?? 0,
+      totalPlayTime: this.currentUser()?.stats?.totalPlayTime ?? 0
+    };
   }
 }

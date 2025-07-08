@@ -451,7 +451,8 @@ export class SudokuGameComponent implements OnInit {
   }
 
   private getDifficultyLevel(): string {
-    const difficulty = this.gameSession?.difficulty || this.difficulty();
+    // Since GameSession doesn't have difficulty, use the component's default or get from gameSession settings
+    const difficulty = this.difficulty();
     switch (difficulty) {
       case 'EASY': return 'easy';
       case 'HARD': return 'hard';
@@ -614,7 +615,6 @@ export class SudokuGameComponent implements OnInit {
   }
 
   checkSolution(): void {
-    const grid = this.sudokuGrid();
     let hasErrors = false;
 
     this.sudokuGrid.update(currentGrid => {

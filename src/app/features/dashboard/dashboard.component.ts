@@ -7,10 +7,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatBadgeModule } from '@angular/material/badge';
-import { AuthService } from '../../../core/services/auth.service';
-import { RoomService } from '../../../core/services/room.service';
-import { GameHistoryService } from '../../../core/services/game-history.service';
-import { User, Room, GameSession } from '../../../core/models/interfaces';
+import { AuthService } from '../../core/services/auth.service';
+import { RoomService } from '../../core/services/room.service';
+import { GameHistoryService } from '../../core/services/game-history.service';
+import { GameSession } from '../../core/models/interfaces';
 
 @Component({
   selector: 'app-dashboard',
@@ -30,20 +30,20 @@ import { User, Room, GameSession } from '../../../core/models/interfaces';
       <div class="welcome-section">
         <div class="welcome-content">
           <h1 class="welcome-title">
-            Welcome back, {{currentUser()?.profile.displayName || currentUser()?.username}}!
+            Welcome back, {{getUserDisplayName()}}!
           </h1>
           <p class="welcome-subtitle">Ready to challenge your mind?</p>
         </div>
         <div class="user-avatar">
           <div class="avatar-circle">
-            @if (currentUser()?.profile.avatar) {
-              <img [src]="currentUser()?.profile.avatar" [alt]="currentUser()?.username">
+            @if (getUserAvatar()) {
+              <img [src]="getUserAvatar()" [alt]="currentUser()?.username">
             } @else {
               <mat-icon>person</mat-icon>
             }
           </div>
           <div class="level-badge">
-            <span>LVL {{currentUser()?.profile.level || 1}}</span>
+            <span>LVL {{getUserLevel()}}</span>
           </div>
         </div>
       </div>
@@ -55,7 +55,7 @@ import { User, Room, GameSession } from '../../../core/models/interfaces';
             <div class="stat-content">
               <mat-icon class="stat-icon games">sports_esports</mat-icon>
               <div class="stat-info">
-                <h3>{{currentUser()?.stats.gamesPlayed || 0}}</h3>
+                <h3>{{getUserStats().gamesPlayed}}</h3>
                 <p>Games Played</p>
               </div>
             </div>
@@ -67,7 +67,7 @@ import { User, Room, GameSession } from '../../../core/models/interfaces';
             <div class="stat-content">
               <mat-icon class="stat-icon wins">emoji_events</mat-icon>
               <div class="stat-info">
-                <h3>{{currentUser()?.stats.gamesWon || 0}}</h3>
+                <h3>{{getUserStats().gamesWon}}</h3>
                 <p>Victories</p>
               </div>
             </div>
@@ -91,7 +91,7 @@ import { User, Room, GameSession } from '../../../core/models/interfaces';
             <div class="stat-content">
               <mat-icon class="stat-icon streak">local_fire_department</mat-icon>
               <div class="stat-info">
-                <h3>{{currentUser()?.stats.currentStreak || 0}}</h3>
+                <h3>{{getUserStats().currentStreak}}</h3>
                 <p>Current Streak</p>
               </div>
             </div>
@@ -216,11 +216,11 @@ import { User, Room, GameSession } from '../../../core/models/interfaces';
           <mat-card>
             <mat-card-header>
               <mat-card-title>Experience Progress</mat-card-title>
-              <mat-card-subtitle>Level {{currentUser()?.profile.level}} Progress</mat-card-subtitle>
+              <mat-card-subtitle>Level {{getUserLevel()}} Progress</mat-card-subtitle>
             </mat-card-header>
             <mat-card-content>
               <div class="progress-info">
-                <span>{{currentUser()?.profile.experience || 0}} / {{getNextLevelExp()}} XP</span>
+                <span>{{getUserExperience()}} / {{getNextLevelExp()}} XP</span>
                 <span>{{getExpToNextLevel()}} XP to next level</span>
               </div>
               <mat-progress-bar 
@@ -504,10 +504,10 @@ import { User, Room, GameSession } from '../../../core/models/interfaces';
   `]
 })
 export class DashboardComponent implements OnInit {
-  private authService = inject(AuthService);
-  private roomService = inject(RoomService);
-  private gameHistoryService = inject(GameHistoryService);
-  private router = inject(Router);
+  private readonly authService = inject(AuthService);
+  private readonly roomService = inject(RoomService);
+  private readonly gameHistoryService = inject(GameHistoryService);
+  private readonly router = inject(Router);
 
   // Reactive signals
   currentUser = this.authService.currentUser;
@@ -522,8 +522,8 @@ export class DashboardComponent implements OnInit {
   private loadDashboardData(): void {
     // Load active rooms count
     this.roomService.getActiveRoomsCount().subscribe({
-      next: (count) => this.activeRooms.set(count),
-      error: (error) => console.error('Error loading active rooms:', error)
+      next: (count: number) => this.activeRooms.set(count),
+      error: (error: any) => console.error('Error loading active rooms:', error)
     });
 
     // Load recent games
@@ -578,7 +578,8 @@ export class DashboardComponent implements OnInit {
     return names[gameType] || gameType;
   }
 
-  getTimeAgo(date: Date): string {
+  getTimeAgo(date: Date | undefined): string {
+    if (!date) return 'Unknown time';
     const now = new Date();
     const gameDate = new Date(date);
     const diffMs = now.getTime() - gameDate.getTime();
@@ -591,7 +592,7 @@ export class DashboardComponent implements OnInit {
   }
 
   getNextLevelExp(): number {
-    const level = this.currentUser()?.profile.level || 1;
+    const level = this.currentUser()?.profile.level ?? 1;
     return level * 1000; // Simple progression: 1000 XP per level
   }
 
@@ -609,5 +610,34 @@ export class DashboardComponent implements OnInit {
     const progressExp = user.profile.experience - currentLevelExp;
     const levelExpRange = nextLevelExp - currentLevelExp;
     return (progressExp / levelExpRange) * 100;
+  }
+
+  // Helper methods for safe access to user properties
+  getUserDisplayName(): string {
+    const user = this.currentUser();
+    return user?.profile?.displayName ?? user?.username ?? 'Unknown User';
+  }
+
+  getUserAvatar(): string | null {
+    return this.currentUser()?.profile?.avatar ?? null;
+  }
+
+  getUserLevel(): number {
+    return this.currentUser()?.profile?.level ?? 1;
+  }
+
+  getUserExperience(): number {
+    return this.currentUser()?.profile?.experience ?? 0;
+  }
+
+  getUserStats() {
+    return {
+      gamesPlayed: this.currentUser()?.stats?.gamesPlayed ?? 0,
+      gamesWon: this.currentUser()?.stats?.gamesWon ?? 0,
+      currentStreak: this.currentUser()?.stats?.currentStreak ?? 0,
+      averageScore: this.currentUser()?.stats?.averageScore ?? 0,
+      bestStreak: this.currentUser()?.stats?.bestStreak ?? 0,
+      totalPlayTime: this.currentUser()?.stats?.totalPlayTime ?? 0
+    };
   }
 }

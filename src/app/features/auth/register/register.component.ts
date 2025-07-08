@@ -167,8 +167,10 @@ import { RegisterRequest } from '../../../core/models/interfaces';
                   <mat-spinner diameter="20"></mat-spinner>
                   <span>Creando cuenta...</span>
                 } @else {
-                  <span>Crear Cuenta</span>
-                  <mat-icon>person_add</mat-icon>
+                  <ng-container>
+                    <span>Crear Cuenta</span>
+                    <mat-icon>person_add</mat-icon>
+                  </ng-container>
                 }
               </button>
             </form>
@@ -219,17 +221,17 @@ export class RegisterComponent {
   errorMessage = signal('');
 
   constructor(
-    private fb: FormBuilder,
-    private authService: AuthService,
-    private webSocketService: WebSocketService,
-    private router: Router,
-    private snackBar: MatSnackBar
+    private readonly fb: FormBuilder,
+    private readonly authService: AuthService,
+    private readonly webSocketService: WebSocketService,
+    private readonly router: Router,
+    private readonly snackBar: MatSnackBar
   ) {
     this.registerForm = this.fb.group({
       username: ['', [
         Validators.required, 
         Validators.minLength(3),
-        Validators.pattern(/^[a-zA-Z0-9_]+$/)
+        Validators.pattern(/^\w+$/)
       ]],
       displayName: [''],
       email: ['', [Validators.required, Validators.email]],

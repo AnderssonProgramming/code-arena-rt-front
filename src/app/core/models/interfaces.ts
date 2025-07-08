@@ -125,7 +125,9 @@ export interface Room {
   description?: string;
   hostId: string;
   hostUsername: string;
+  ownerId: string;
   players: RoomPlayer[];
+  currentPlayers: RoomPlayer[];
   gameConfig: GameConfig;
   status: RoomStatus;
   createdAt?: Date;
@@ -144,10 +146,12 @@ export interface RoomPlayer {
 }
 
 export interface GameConfig {
+  gameType: GameType;
   maxPlayers: number;
   difficulty: ChallengeDifficulty;
   gameMode: GameMode;
   timePerChallenge: number;
+  timeLimit: number;
   totalChallenges: number;
   isPublic: boolean;
 }
@@ -165,6 +169,7 @@ export enum GameStatus {
 export enum RoomStatus {
   WAITING = 'WAITING',
   STARTING = 'STARTING',
+  IN_PROGRESS = 'IN_PROGRESS',
   IN_GAME = 'IN_GAME',
   FINISHED = 'FINISHED'
 }
@@ -253,9 +258,28 @@ export interface GameSession {
   timeLimit: number;
   startedAt: Date;
   endedAt?: Date;
+  winnerId?: string;
+  userScore: number;
+  duration: number;
   gameData?: any; // Specific game data (sudoku board, crossword, etc.)
   settings: GameSettings;
   leaderboard: PlayerResult[];
+}
+
+// Game statistics interface
+export interface GameStats {
+  totalGames: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  averageScore: number;
+  bestScore: number;
+  totalPlayTime: number;
+  averageGameDuration: number;
+  favoriteGameType?: GameType;
+  currentStreak: number;
+  bestStreak: number;
+  recentGames: GameSession[];
 }
 
 // WebSocket Messages

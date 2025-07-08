@@ -5,6 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -12,10 +13,10 @@ import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Subscription } from 'rxjs';
-import { RoomService } from '../../../core/services/room.service';
-import { WebSocketService } from '../../../core/services/websocket.service';
-import { AuthService } from '../../../core/services/auth.service';
-import { Room, User, GameSession } from '../../../core/models/interfaces';
+import { RoomService } from '../../core/services/room.service';
+import { WebSocketService } from '../../core/services/websocket.service';
+import { AuthService } from '../../core/services/auth.service';
+import { Room, GameSession, RoomStatus } from '../../core/models/interfaces';
 import { SudokuGameComponent } from './games/sudoku/sudoku-game.component';
 import { CrosswordGameComponent } from './games/crossword/crossword-game.component';
 import { WordSearchGameComponent } from './games/word-search/word-search-game.component';
@@ -31,6 +32,7 @@ import { MathPuzzleGameComponent } from './games/math-puzzle/math-puzzle-game.co
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
+    MatProgressSpinnerModule,
     MatChipsModule,
     MatDialogModule,
     MatSnackBarModule,
@@ -50,11 +52,11 @@ import { MathPuzzleGameComponent } from './games/math-puzzle/math-puzzle-game.co
           <h1>{{room()?.name}}</h1>
           <div class="game-details">
             <mat-chip class="game-type-chip">
-              <mat-icon>{{getGameIcon(room()?.gameConfig.gameType)}}</mat-icon>
-              {{getGameDisplayName(room()?.gameConfig.gameType)}}
+              <mat-icon>{{getGameIcon(getRoomGameType())}}</mat-icon>
+              {{getGameDisplayName(getRoomGameType())}}
             </mat-chip>
-            <mat-chip [class]="'difficulty-' + room()?.gameConfig.difficulty.toLowerCase()">
-              {{room()?.gameConfig.difficulty}}
+            <mat-chip [class]="'difficulty-' + getRoomDifficulty().toLowerCase()">
+              {{getRoomDifficulty()}}
             </mat-chip>
           </div>
         </div>
@@ -74,7 +76,7 @@ import { MathPuzzleGameComponent } from './games/math-puzzle/math-puzzle-game.co
               <div class="status-content">
                 <mat-icon class="status-icon">hourglass_empty</mat-icon>
                 <h3>Waiting for Players</h3>
-                <p>{{room()?.currentPlayers.length}}/{{room()?.maxPlayers}} players joined</p>
+                <p>{{getRoomCurrentPlayersLength()}}/{{getRoomMaxPlayers()}} players joined</p>
                 
                 @if (isRoomOwner()) {
                   <button 
@@ -112,7 +114,7 @@ import { MathPuzzleGameComponent } from './games/math-puzzle/math-puzzle-game.co
 
             <!-- Game Area -->
             <div class="game-area">
-              @switch (room()?.gameConfig.gameType) {
+              @switch (getRoomGameType()) {
                 @case ('SUDOKU') {
                   <app-sudoku-game [gameSession]="currentGameSession()"></app-sudoku-game>
                 }
@@ -132,7 +134,7 @@ import { MathPuzzleGameComponent } from './games/math-puzzle/math-puzzle-game.co
                   <div class="game-placeholder">
                     <mat-icon class="placeholder-icon">games</mat-icon>
                     <h3>Game Loading...</h3>
-                    <p>Preparing {{getGameDisplayName(room()?.gameConfig.gameType)}} game</p>
+                    <p>Preparing {{getGameDisplayName(getRoomGameType())}} game</p>
                   </div>
                 }
               }
@@ -168,12 +170,12 @@ import { MathPuzzleGameComponent } from './games/math-puzzle/math-puzzle-game.co
       <div class="players-panel">
         <mat-card>
           <mat-card-header>
-            <mat-card-title>Players ({{room()?.currentPlayers.length}}/{{room()?.maxPlayers}})</mat-card-title>
+            <mat-card-title>Players ({{getRoomCurrentPlayersLength()}}/{{getRoomMaxPlayers()}})</mat-card-title>
           </mat-card-header>
           <mat-card-content>
             <div class="players-list">
-              @for (player of room()?.currentPlayers; track player.id) {
-                <div class="player-item" [class.current-user]="player.id === currentUser()?.id">
+              @for (player of room()?.currentPlayers; track player.userId) {
+                <div class="player-item" [class.current-user]="player.userId === currentUser()?.id">
                   <div class="player-info">
                     <div class="player-avatar">
                       @if (player.avatar) {
@@ -184,7 +186,7 @@ import { MathPuzzleGameComponent } from './games/math-puzzle/math-puzzle-game.co
                     </div>
                     <div class="player-details">
                       <span class="player-name">{{player.username}}</span>
-                      @if (player.id === room()?.ownerId) {
+                      @if (player.userId === room()?.ownerId) {
                         <mat-chip class="owner-chip">
                           <mat-icon>star</mat-icon>
                           Host
@@ -195,11 +197,11 @@ import { MathPuzzleGameComponent } from './games/math-puzzle/math-puzzle-game.co
                   
                   @if (room()?.status === 'IN_PROGRESS') {
                     <div class="player-score">
-                      <span class="score">{{getPlayerScore(player.id)}}</span>
+                      <span class="score">{{getPlayerScore(player.userId)}}</span>
                     </div>
                   } @else {
                     <div class="player-status">
-                      @if (isPlayerReady(player.id)) {
+                      @if (isPlayerReady(player.userId)) {
                         <mat-chip class="ready-chip">
                           <mat-icon>check</mat-icon>
                           Ready
@@ -596,13 +598,13 @@ import { MathPuzzleGameComponent } from './games/math-puzzle/math-puzzle-game.co
   `]
 })
 export class GameComponent implements OnInit, OnDestroy {
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private roomService = inject(RoomService);
-  private wsService = inject(WebSocketService);
-  private authService = inject(AuthService);
-  private snackBar = inject(MatSnackBar);
-  private dialog = inject(MatDialog);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly roomService = inject(RoomService);
+  private readonly wsService = inject(WebSocketService);
+  private readonly authService = inject(AuthService);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
 
   // Reactive signals
   room = signal<Room | null>(null);
@@ -614,12 +616,12 @@ export class GameComponent implements OnInit, OnDestroy {
 
   // Component state
   currentUser = this.authService.currentUser;
-  private subscriptions: Subscription[] = [];
+  private readonly subscriptions: Subscription[] = [];
   private gameTimer?: number;
   private roomId = '';
 
   ngOnInit(): void {
-    this.roomId = this.route.snapshot.paramMap.get('id') || '';
+    this.roomId = this.route.snapshot.paramMap.get('id') ?? '';
     if (this.roomId) {
       this.loadRoom();
       this.setupWebSocketSubscriptions();
@@ -631,7 +633,13 @@ export class GameComponent implements OnInit, OnDestroy {
     if (this.gameTimer) {
       clearInterval(this.gameTimer);
     }
-    this.wsService.leaveRoom(this.roomId);
+    const currentUser = this.authService.currentUser();
+    if (currentUser) {
+      this.wsService.leaveRoom({
+        roomId: this.roomId,
+        userId: currentUser.id!
+      });
+    }
   }
 
   private loadRoom(): void {
@@ -641,7 +649,14 @@ export class GameComponent implements OnInit, OnDestroy {
         this.isLoading.set(false);
         
         // Join WebSocket room
-        this.wsService.joinRoom(this.roomId);
+        const currentUser = this.authService.currentUser();
+        if (currentUser) {
+          this.wsService.joinRoom({
+            roomId: this.roomId,
+            userId: currentUser.id!,
+            username: currentUser.username
+          });
+        }
         
         // Start timer if game is in progress
         if (room.status === 'IN_PROGRESS') {
@@ -688,11 +703,11 @@ export class GameComponent implements OnInit, OnDestroy {
         this.loadRoom(); // Refresh room data
         break;
       case 'GAME_STARTED':
-        this.room.update(room => room ? { ...room, status: 'IN_PROGRESS' } : null);
+        this.room.update(room => room ? { ...room, status: RoomStatus.IN_PROGRESS } : null);
         this.startGameTimer();
         break;
       case 'GAME_ENDED':
-        this.room.update(room => room ? { ...room, status: 'FINISHED' } : null);
+        this.room.update(room => room ? { ...room, status: RoomStatus.FINISHED } : null);
         this.stopGameTimer();
         break;
     }
@@ -772,7 +787,16 @@ export class GameComponent implements OnInit, OnDestroy {
   sendChatMessage(): void {
     if (!this.chatMessage.trim()) return;
 
-    this.wsService.sendChatMessage(this.roomId, this.chatMessage);
+    const currentUser = this.authService.currentUser();
+    if (currentUser) {
+      this.wsService.sendChatMessage({
+        roomId: this.roomId,
+        userId: currentUser.id!,
+        username: currentUser.username,
+        message: this.chatMessage,
+        timestamp: new Date()
+      });
+    }
     this.chatMessage = '';
   }
 
@@ -830,5 +854,22 @@ export class GameComponent implements OnInit, OnDestroy {
     if (diff < 60000) return 'now';
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m`;
     return messageTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Helper methods for safe property access
+  getRoomGameType(): string {
+    return this.room()?.gameConfig?.gameType ?? '';
+  }
+
+  getRoomDifficulty(): string {
+    return this.room()?.gameConfig?.difficulty ?? '';
+  }
+
+  getRoomCurrentPlayersLength(): number {
+    return this.room()?.currentPlayers?.length ?? 0;
+  }
+
+  getRoomMaxPlayers(): number {
+    return this.room()?.maxPlayers ?? 0;
   }
 }

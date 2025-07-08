@@ -135,6 +135,23 @@ export class RoomService {
       );
   }
 
+  // Find quick match
+  findQuickMatch(): Observable<Room> {
+    return this.http.post<Room>(`${this.API_URL}/rooms/quick-match`, {})
+      .pipe(
+        tap(room => {
+          this.currentRoomSubject.next(room);
+          this.currentRoom.set(room);
+          this.isInRoom.set(true);
+        })
+      );
+  }
+
+  // Get active rooms count for dashboard
+  getActiveRoomsCount(): Observable<number> {
+    return this.http.get<number>(`${this.API_URL}/rooms/active/count`);
+  }
+
   // Utility methods
   isHost(room: Room, userId: string): boolean {
     return room.hostId === userId;

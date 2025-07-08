@@ -156,13 +156,13 @@ import { CreateRoomRequest } from '../../../core/services/room.service';
                   <mat-icon>people</mat-icon>
                   Max Players: {{gameConfigForm.get('maxPlayers')?.value}}
                 </label>
-                <mat-slider 
+                <input type="range" 
                   min="2" 
                   max="8" 
                   step="1" 
                   [value]="gameConfigForm.get('maxPlayers')?.value"
-                  (input)="updateMaxPlayers($event)">
-                </mat-slider>
+                  (input)="updateMaxPlayers($event)"
+                  class="custom-slider">
                 <div class="slider-range">
                   <span>2</span>
                   <span>8</span>
@@ -174,13 +174,13 @@ import { CreateRoomRequest } from '../../../core/services/room.service';
                   <mat-icon>schedule</mat-icon>
                   Time Limit: {{formatTime(gameConfigForm.get('timeLimit')?.value)}}
                 </label>
-                <mat-slider 
+                <input type="range" 
                   min="300" 
                   max="3600" 
                   step="300"
                   [value]="gameConfigForm.get('timeLimit')?.value"
-                  (input)="updateTimeLimit($event)">
-                </mat-slider>
+                  (input)="updateTimeLimit($event)"
+                  class="custom-slider">
                 <div class="slider-range">
                   <span>5min</span>
                   <span>60min</span>
@@ -474,11 +474,13 @@ export class CreateRoomComponent {
   }
 
   updateMaxPlayers(event: any): void {
-    this.gameConfigForm.patchValue({ maxPlayers: event.value });
+    const target = event.target as HTMLInputElement;
+    this.gameConfigForm.patchValue({ maxPlayers: parseInt(target.value) });
   }
 
   updateTimeLimit(event: any): void {
-    this.gameConfigForm.patchValue({ timeLimit: event.value });
+    const target = event.target as HTMLInputElement;
+    this.gameConfigForm.patchValue({ timeLimit: parseInt(target.value) });
   }
 
   formatTime(seconds: number): string {
@@ -516,7 +518,11 @@ export class CreateRoomComponent {
         gameType: gameConfig.gameType,
         difficulty: gameConfig.difficulty,
         timeLimit: gameConfig.timeLimit,
-        maxPlayers: gameConfig.maxPlayers
+        maxPlayers: gameConfig.maxPlayers,
+        gameMode: gameConfig.gameMode || 'CLASSIC',
+        timePerChallenge: gameConfig.timePerChallenge || 60,
+        totalChallenges: gameConfig.totalChallenges || 10,
+        isPublic: !basicInfo.isPrivate
       },
       isPrivate: basicInfo.isPrivate,
       password: basicInfo.isPrivate ? basicInfo.password : undefined

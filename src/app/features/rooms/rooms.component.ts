@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -14,8 +14,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { RoomService } from '../../../core/services/room.service';
-import { Room, GameType } from '../../../core/models/interfaces';
+import { RoomService } from '../../core/services/room.service';
+import { Room } from '../../core/models/interfaces';
 
 @Component({
   selector: 'app-rooms',
@@ -60,14 +60,14 @@ import { Room, GameType } from '../../../core/models/interfaces';
               <!-- Search -->
               <mat-form-field appearance="outline">
                 <mat-label>Search rooms</mat-label>
-                <input matInput [(ngModel)]="searchText()" placeholder="Search by name or description">
+                <input matInput [(ngModel)]="searchText" placeholder="Search by name or description">
                 <mat-icon matSuffix>search</mat-icon>
               </mat-form-field>
 
               <!-- Game Type Filter -->
               <mat-form-field appearance="outline">
                 <mat-label>Game Type</mat-label>
-                <mat-select [(ngModel)]="selectedGameType()" multiple>
+                <mat-select [(ngModel)]="selectedGameType" multiple>
                   @for (gameType of gameTypes; track gameType.value) {
                     <mat-option [value]="gameType.value">{{gameType.label}}</mat-option>
                   }
@@ -77,7 +77,7 @@ import { Room, GameType } from '../../../core/models/interfaces';
               <!-- Difficulty Filter -->
               <mat-form-field appearance="outline">
                 <mat-label>Difficulty</mat-label>
-                <mat-select [(ngModel)]="selectedDifficulty()">
+                <mat-select [(ngModel)]="selectedDifficulty">
                   <mat-option value="">All</mat-option>
                   <mat-option value="EASY">Easy</mat-option>
                   <mat-option value="MEDIUM">Medium</mat-option>
@@ -87,7 +87,7 @@ import { Room, GameType } from '../../../core/models/interfaces';
 
               <!-- Room Status Filter -->
               <div class="filter-toggles">
-                <mat-button-toggle-group [(ngModel)]="roomStatusFilter()">
+                <mat-button-toggle-group [(ngModel)]="roomStatusFilter">
                   <mat-button-toggle value="ALL">All</mat-button-toggle>
                   <mat-button-toggle value="WAITING">Waiting</mat-button-toggle>
                   <mat-button-toggle value="IN_PROGRESS">Playing</mat-button-toggle>
@@ -117,7 +117,7 @@ import { Room, GameType } from '../../../core/models/interfaces';
             <mat-spinner></mat-spinner>
             <p>Loading rooms...</p>
           </div>
-        } @else if (filteredRooms().length === 0) {
+        } @else if (filteredRooms.length === 0) {
           <div class="empty-state">
             <mat-icon class="empty-icon">meeting_room</mat-icon>
             <h3>No rooms found</h3>
@@ -129,7 +129,7 @@ import { Room, GameType } from '../../../core/models/interfaces';
           </div>
         } @else {
           <div class="rooms-grid">
-            @for (room of filteredRooms(); track room.id) {
+            @for (room of filteredRooms; track room.id) {
               <mat-card class="room-card" [class.full]="isRoomFull(room)" [class.playing]="room.status === 'IN_PROGRESS'">
                 <mat-card-header>
                   <div mat-card-avatar class="room-avatar">
@@ -174,9 +174,9 @@ import { Room, GameType } from '../../../core/models/interfaces';
                     <div class="players-list">
                       <h4>Players:</h4>
                       <div class="players">
-                        @for (player of room.currentPlayers; track player.id) {
+                        @for (player of room.currentPlayers; track player.userId) {
                           <div class="player-chip">
-                            <mat-icon *ngIf="player.id === room.ownerId" class="owner-icon">star</mat-icon>
+                            <mat-icon *ngIf="player.userId === room.ownerId" class="owner-icon">star</mat-icon>
                             <span>{{player.username}}</span>
                           </div>
                         }
@@ -455,18 +455,20 @@ import { Room, GameType } from '../../../core/models/interfaces';
   `]
 })
 export class RoomsComponent implements OnInit {
-  private roomService = inject(RoomService);
-  private router = inject(Router);
-  private snackBar = inject(MatSnackBar);
+  private readonly roomService = inject(RoomService);
+  private readonly router = inject(Router);
+  private readonly snackBar = inject(MatSnackBar);
 
   // Reactive signals
   rooms = signal<Room[]>([]);
   isLoading = signal(false);
   isJoining = signal(false);
-  searchText = signal('');
-  selectedGameType = signal<string[]>([]);
-  selectedDifficulty = signal('');
-  roomStatusFilter = signal('ALL');
+  
+  // Filter properties for two-way binding
+  searchText = '';
+  selectedGameType: string[] = [];
+  selectedDifficulty = '';
+  roomStatusFilter = 'ALL';
 
   // Game types configuration
   gameTypes = [
@@ -478,12 +480,12 @@ export class RoomsComponent implements OnInit {
   ];
 
   // Computed filtered rooms
-  filteredRooms = computed(() => {
+  get filteredRooms(): Room[] {
     let filtered = this.rooms();
 
     // Filter by search text
-    if (this.searchText()) {
-      const search = this.searchText().toLowerCase();
+    if (this.searchText) {
+      const search = this.searchText.toLowerCase();
       filtered = filtered.filter(room => 
         room.name.toLowerCase().includes(search) ||
         (room.description?.toLowerCase().includes(search) ?? false)
@@ -491,26 +493,26 @@ export class RoomsComponent implements OnInit {
     }
 
     // Filter by game type
-    if (this.selectedGameType().length > 0) {
+    if (this.selectedGameType.length > 0) {
       filtered = filtered.filter(room => 
-        this.selectedGameType().includes(room.gameConfig.gameType)
+        this.selectedGameType.includes(room.gameConfig.gameType)
       );
     }
 
     // Filter by difficulty
-    if (this.selectedDifficulty()) {
+    if (this.selectedDifficulty) {
       filtered = filtered.filter(room => 
-        room.gameConfig.difficulty === this.selectedDifficulty()
+        room.gameConfig.difficulty === this.selectedDifficulty
       );
     }
 
     // Filter by status
-    if (this.roomStatusFilter() !== 'ALL') {
-      filtered = filtered.filter(room => room.status === this.roomStatusFilter());
+    if (this.roomStatusFilter !== 'ALL') {
+      filtered = filtered.filter(room => room.status === this.roomStatusFilter);
     }
 
     return filtered;
-  });
+  }
 
   ngOnInit(): void {
     this.loadRooms();
@@ -545,13 +547,15 @@ export class RoomsComponent implements OnInit {
   joinRoom(room: Room): void {
     if (this.isJoining()) return;
     
+    if (!room.id) return;
+    
     this.isJoining.set(true);
-    this.roomService.joinRoom(room.id).subscribe({
+    this.roomService.joinRoom({ roomId: room.id }).subscribe({
       next: () => {
         this.snackBar.open(`Joined room: ${room.name}`, 'Close', { duration: 3000 });
         this.router.navigate(['/game', room.id]);
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Error joining room:', error);
         let message = 'Failed to join room';
         if (error.error?.message) {
@@ -566,10 +570,10 @@ export class RoomsComponent implements OnInit {
   quickPlay(): void {
     this.isLoading.set(true);
     this.roomService.findQuickMatch().subscribe({
-      next: (room) => {
+      next: (room: Room) => {
         this.router.navigate(['/game', room.id]);
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Quick play error:', error);
         this.snackBar.open('No available rooms for quick play', 'Close', { duration: 3000 });
         this.isLoading.set(false);

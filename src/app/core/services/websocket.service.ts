@@ -1,9 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 import { Client, IMessage } from '@stomp/stompjs';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import { AuthService } from './auth.service';
 import { 
-  WebSocketMessage, 
   RoomJoinMessage, 
   RoomLeaveMessage, 
   ChatMessage, 
@@ -16,25 +15,25 @@ import {
   providedIn: 'root'
 })
 export class WebSocketService {
-  private client: Client;
+  private client!: Client;
   private readonly WS_URL = 'ws://localhost:8081/ws';
   
   // Connection status
   public isConnected = signal(false);
-  private connectionSubject = new BehaviorSubject<boolean>(false);
+  private readonly connectionSubject = new BehaviorSubject<boolean>(false);
   public connection$ = this.connectionSubject.asObservable();
 
   // Message streams
-  private roomMessagesSubject = new BehaviorSubject<any>(null);
+  private readonly roomMessagesSubject = new BehaviorSubject<any>(null);
   public roomMessages$ = this.roomMessagesSubject.asObservable();
 
-  private gameMessagesSubject = new BehaviorSubject<any>(null);
+  private readonly gameMessagesSubject = new BehaviorSubject<any>(null);
   public gameMessages$ = this.gameMessagesSubject.asObservable();
 
-  private chatMessagesSubject = new BehaviorSubject<ChatMessage | null>(null);
+  private readonly chatMessagesSubject = new BehaviorSubject<ChatMessage | null>(null);
   public chatMessages$ = this.chatMessagesSubject.asObservable();
 
-  constructor(private authService: AuthService) {
+  constructor(private readonly authService: AuthService) {
     this.initializeWebSocket();
   }
 
